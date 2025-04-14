@@ -297,18 +297,16 @@ const ElevationControl = ({ elevation, setElevation }: ElevationControlProps) =>
       // Simple cache for elevation data
       const elevationCache: Record<string, number> = {}
       
-      // Throttle function to limit API calls
-      const throttle = (callback: Function, limit: number) => {
-        let waiting = false
+      // Debounce function to limit API calls
+      const debounce = (callback: Function, limit: number) => {
+        let timeoutId: NodeJS.Timeout;
         return function(this: any, ...args: any[]) {
-          if (!waiting) {
-            callback.apply(this, args)
-            waiting = true
-            setTimeout(() => {
-              waiting = false
-            }, limit)
-          }
-        }
+          const context = this;
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => {
+            callback.apply(context, args);
+          }, limit);
+        };
       }
       
       // Function to fetch elevation data
@@ -380,8 +378,8 @@ const ElevationControl = ({ elevation, setElevation }: ElevationControlProps) =>
       
       map.getContainer().appendChild(elevationContainer)
       
-      // Throttled fetch to prevent too many API calls
-      const throttledFetch = throttle(fetchElevation, 200)
+      // Debounced fetch to prevent too many API calls
+      const throttledFetch = debounce(fetchElevation, 200)
       
       // Event handlers for mouse movement
       const handleMouseMove = (e: L.LeafletMouseEvent) => {

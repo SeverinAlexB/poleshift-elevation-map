@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, useMap, ZoomControl, LayersControl } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
+import L from 'leaflet'
 
 // Add type declarations for vendor-prefixed fullscreen methods
 declare global {
@@ -28,10 +29,10 @@ declare module 'leaflet' {
   }
 }
 
-// Add global CSS for fullscreen mode
-const FullscreenCSS = () => {
+// Add global CSS for fullscreen mode and cursor styles
+const GlobalMapCSS = () => {
   useEffect(() => {
-    // Add CSS to handle fullscreen properly
+    // Add CSS to handle fullscreen properly and set map cursor
     const style = document.createElement('style')
     style.textContent = `
       .leaflet-container:fullscreen {
@@ -64,6 +65,24 @@ const FullscreenCSS = () => {
         padding: 0 !important;
         background-color: white !important;
       }
+      
+      .leaflet-container {
+        cursor: crosshair !important;
+      }
+      
+      .leaflet-container:active {
+        cursor: crosshair !important;
+      }
+      
+      .leaflet-interactive {
+        cursor: pointer !important;
+      }
+      
+      .leaflet-control-zoom a, 
+      .leaflet-control-layers-toggle,
+      .leaflet-bar a {
+        cursor: pointer !important;
+      }
     `
     document.head.appendChild(style)
     
@@ -71,6 +90,25 @@ const FullscreenCSS = () => {
       document.head.removeChild(style)
     }
   }, [])
+  
+  return null
+}
+
+// Additional direct map styling
+const DirectMapStyling = () => {
+  const map = useMap()
+  
+  useEffect(() => {
+    // Apply cursor style directly to the map container
+    const mapContainer = map.getContainer()
+    mapContainer.style.cursor = 'crosshair'
+    
+    // No need for mouse events since we're using the same cursor for all states
+    
+    return () => {
+      // Cleanup if needed
+    }
+  }, [map])
   
   return null
 }
@@ -241,8 +279,170 @@ const CustomFullscreenControl = () => {
   return null
 }
 
+// Elevation control component
+interface ElevationControlProps {
+  elevation: number | null
+  setElevation: (elevation: number | null) => void
+}
+
+const ElevationControl = ({ elevation, setElevation }: ElevationControlProps) => {
+  const map = useMap()
+  const [isLoading, setIsLoading] = useState(false)
+  const [hasError, setHasError] = useState(false)
+  const [coordinates, setCoordinates] = useState<{lat: number, lng: number} | null>(null)
+  
+  useEffect(() => {
+    // Only run on client-side
+    if (typeof window !== 'undefined') {
+      // Simple cache for elevation data
+      const elevationCache: Record<string, number> = {}
+      
+      // Throttle function to limit API calls
+      const throttle = (callback: Function, limit: number) => {
+        let waiting = false
+        return function(this: any, ...args: any[]) {
+          if (!waiting) {
+            callback.apply(this, args)
+            waiting = true
+            setTimeout(() => {
+              waiting = false
+            }, limit)
+          }
+        }
+      }
+      
+      // Function to fetch elevation data
+      const fetchElevation = async (lat: number, lng: number) => {
+        // Update coordinates regardless of elevation fetch
+        setCoordinates({ lat, lng })
+        
+        // Round to 4 decimal places for caching (~10m precision)
+        const roundedLat = Math.round(lat * 10000) / 10000
+        const roundedLng = Math.round(lng * 10000) / 10000
+        const cacheKey = `${roundedLat},${roundedLng}`
+        
+        // Check cache first
+        if (elevationCache[cacheKey]) {
+          setElevation(elevationCache[cacheKey])
+          setIsLoading(false)
+          setHasError(false)
+          return
+        }
+        
+        setIsLoading(true)
+        setHasError(false)
+        try {
+          // Using Open-Meteo API for elevation data
+          const response = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${roundedLat}&longitude=${roundedLng}`)
+          const data = await response.json()
+          
+          if (data && data.elevation && data.elevation.length > 0) {
+            const elevationValue = Math.round(data.elevation[0])
+            setElevation(elevationValue)
+            setHasError(false)
+            
+            // Store in cache
+            elevationCache[cacheKey] = elevationValue
+          } else {
+            setElevation(null)
+            setHasError(true)
+          }
+        } catch (error) {
+          console.error('Error fetching elevation data:', error)
+          setElevation(null)
+          setHasError(true)
+        } finally {
+          setIsLoading(false)
+        }
+      }
+      
+      // Create a container for elevation display
+      const elevationContainer = L.DomUtil.create('div', 'elevation-control')
+      elevationContainer.style.cssText = `
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(40, 40, 40, 0.8);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 4px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        font-family: sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 1000;
+        pointer-events: none;
+        min-width: 180px;
+        text-align: center;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        line-height: 1.5;
+      `
+      
+      map.getContainer().appendChild(elevationContainer)
+      
+      // Throttled fetch to prevent too many API calls
+      const throttledFetch = throttle(fetchElevation, 200)
+      
+      // Event handlers for mouse movement
+      const handleMouseMove = (e: L.LeafletMouseEvent) => {
+        const { lat, lng } = e.latlng
+        throttledFetch(lat, lng)
+      }
+      
+      const handleMouseOut = () => {
+        setElevation(null)
+        setCoordinates(null)
+        setIsLoading(false)
+        setHasError(false)
+      }
+      
+      // Add event listeners
+      map.on('mousemove', handleMouseMove)
+      map.on('mouseout', handleMouseOut)
+      
+      // Update elevation display when elevation changes
+      const updateElevationDisplay = () => {
+        let elevationText = 'Elevation: --'
+        let coordinatesText = 'Lat: -- | Lon: --'
+        
+        if (isLoading) {
+          elevationText = 'Elevation: loading...'
+        } else if (hasError) {
+          elevationText = 'Elevation: unavailable'
+        } else if (elevation !== null) {
+          elevationText = `Elevation: ${elevation} m`
+        }
+        
+        if (coordinates) {
+          const { lat, lng } = coordinates
+          // Format coordinates to 6 decimal places (sub-meter precision)
+          coordinatesText = `Lat: ${lat.toFixed(6)} | Lon: ${lng.toFixed(6)}`
+        }
+        
+        elevationContainer.innerHTML = `${coordinatesText} | ${elevationText}`
+      }
+      
+      // Set up subscription to elevation changes
+      const elevationInterval = setInterval(updateElevationDisplay, 100)
+      
+      // Clean up on unmount
+      return () => {
+        map.off('mousemove', handleMouseMove)
+        map.off('mouseout', handleMouseOut)
+        if (elevationContainer.parentNode) {
+          elevationContainer.parentNode.removeChild(elevationContainer)
+        }
+        clearInterval(elevationInterval)
+      }
+    }
+  }, [map, elevation, setElevation, isLoading, hasError, coordinates])
+  
+  return null
+}
+
 export default function Map() {
   const [isMounted, setIsMounted] = useState(false)
+  const [elevation, setElevation] = useState<number | null>(null)
   
   useEffect(() => {
     setIsMounted(true)
@@ -264,7 +464,9 @@ export default function Map() {
       <ZoomControl position="topright" /> {/* Place zoom control at top right */}
       <FixLeafletIcons />
       <CustomFullscreenControl />
-      <FullscreenCSS />
+      <GlobalMapCSS />
+      <DirectMapStyling />
+      <ElevationControl elevation={elevation} setElevation={setElevation} />
       <LayersControl position="topright">
         <LayersControl.BaseLayer checked name="Satellite">
           <TileLayer
@@ -274,11 +476,18 @@ export default function Map() {
             maxZoom={20}
           />
         </LayersControl.BaseLayer>
-        <LayersControl.BaseLayer name="Topographic">
+        <LayersControl.BaseLayer name="OpenTopoMap">
           <TileLayer
             attribution='&copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
             url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
             maxZoom={17}
+          />
+        </LayersControl.BaseLayer>
+        <LayersControl.BaseLayer name="OpenStreetMap">
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maxZoom={19}
           />
         </LayersControl.BaseLayer>
       </LayersControl>

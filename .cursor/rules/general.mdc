@@ -108,13 +108,14 @@ alwaysApply: true
     - Favor server components and Next.js SSR.
     - Use only for Web API access in small components.
     - Avoid for data fetching or state management.
+  - Never ask to run `npm run dev` as the dev is already running it continously.
 
   Follow Next.js docs for Data Fetching, Rendering, and Routing.
 
 
-  Primary Application Goal
+  Primary Application Goals
   - Create an application that has a single map on the main page.
-  - The map has controls for zooming, moving around, and changing the orientation.
+  - The map has controls for zooming, moving around, full screen, and changing the orientation.
   - The user can select from several map layers with an control.
 
     

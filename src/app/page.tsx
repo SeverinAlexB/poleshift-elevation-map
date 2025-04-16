@@ -1,4 +1,5 @@
 import MapWrapper from '@/components/MapWrapper'
+import ExampleSection from '@/components/ExampleSection'
 
 export default function Home() {
   return (
@@ -69,6 +70,7 @@ export default function Home() {
       
       <main className="flex-grow">
         <MapWrapper />
+        <ExampleSection />
       </main>
       
       <footer className="mt-8 mb-16 text-center text-gray-500 text-sm">

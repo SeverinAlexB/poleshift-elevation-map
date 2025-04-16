@@ -632,7 +632,7 @@ const ElevationLegend = () => {
         transition: all 0.3s ease;
         border: 1px solid rgba(0,0,0,0.2);
         display: block; /* Ensure it's visible */
-        width: 120px; /* Narrower width */
+        width: 75px; /* Width to fit shorter title */
       `
       
       // Add the container to the map
@@ -841,15 +841,14 @@ const ElevationLegend = () => {
     }
     
     // Expanded view
-    legendContainer.style.width = '120px'
+    legendContainer.style.width = '75px'
     legendContainer.style.height = 'auto'
     
     // Create header
     const header = document.createElement('div')
     header.style.cssText = `
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
       padding: 5px 8px;
       font-weight: bold;
       background: #f8f8f8;
@@ -858,9 +857,14 @@ const ElevationLegend = () => {
       color: #333;
     `
     
-    const title = document.createElement('div')
-    title.textContent = 'Elevation (m)'
-    title.style.color = '#333';
+    // Create a container for the button row
+    const buttonRow = document.createElement('div')
+    buttonRow.style.cssText = `
+      display: flex;
+      justify-content: flex-end;
+      width: 100%;
+      margin-bottom: 3px;
+    `
     
     const closeButton = document.createElement('button')
     closeButton.style.cssText = `
@@ -884,8 +888,18 @@ const ElevationLegend = () => {
       setIsCollapsed(true)
     })
     
+    // Add button to button row
+    buttonRow.appendChild(closeButton)
+    
+    const title = document.createElement('div')
+    title.textContent = 'Height (m)'
+    title.style.color = '#333';
+    title.style.textAlign = 'center';
+    title.style.width = '100%';
+    
+    // Add both rows to header
+    header.appendChild(buttonRow)
     header.appendChild(title)
-    header.appendChild(closeButton)
     legendContainer.appendChild(header)
     
     // Create gradient display
@@ -960,16 +974,16 @@ const ElevationLegend = () => {
         left: 0;
         top: ${labelPos}%;
         transform: translateY(-50%);
-        background: rgba(255,255,255,0.85);
-        padding: 2px 4px;
-        border-radius: 2px;
+        background: rgba(255,255,255,0.4);
+        padding: 0px 2px;
+        border-radius: 1px;
         font-size: 9px;
         font-weight: bold;
-        width: 45px;
+        width: 42px;
         margin: 0 auto;
         text-align: center;
         color: #333;
-        box-shadow: 0 0 2px rgba(0,0,0,0.2);
+        box-shadow: none;
       `
       
       // Format the label text

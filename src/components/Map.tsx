@@ -898,8 +898,11 @@ const ElevationLegend = () => {
     `
     
     // Generate gradient stops
-    const gradientStops = colormapData.map(item => 
-      `${item.color} ${(item.elevation / colormapData[colormapData.length - 1].elevation) * 100}%`
+    const sortedData = [...colormapData].sort((a, b) => a.elevation - b.elevation)
+    const maxElevation = sortedData[sortedData.length - 1].elevation
+    
+    const gradientStops = sortedData.map(item => 
+      `${item.color} ${(item.elevation / maxElevation) * 100}%`
     ).join(', ')
     
     // Create gradient bar
@@ -914,15 +917,15 @@ const ElevationLegend = () => {
       box-shadow: inset 0 0 3px rgba(0,0,0,0.1);
     `
     
-    // Add labels at regular intervals
-    const numLabels = Math.min(5, colormapData.length)
-    const labelStep = Math.floor(colormapData.length / numLabels)
+    // Add labels at regular intervals - ensure we include lowest, highest, and some intermediate values
+    // Create evenly spaced labels for better readability
+    const numLabels = Math.min(6, sortedData.length)
+    const step = (sortedData.length - 1) / (numLabels - 1)
     
-    for (let i = 0; i < colormapData.length; i += labelStep) {
-      if (i >= colormapData.length) continue
-      
-      const item = colormapData[i]
-      const percentage = (item.elevation / colormapData[colormapData.length - 1].elevation) * 100
+    for (let i = 0; i < numLabels; i++) {
+      const dataIndex = Math.min(Math.round(i * step), sortedData.length - 1)
+      const item = sortedData[dataIndex]
+      const percentage = (item.elevation / maxElevation) * 100
       const labelPos = 100 - percentage
       
       const label = document.createElement('div')
@@ -956,13 +959,14 @@ const ElevationLegend = () => {
       const tick = document.createElement('div')
       tick.style.cssText = `
         position: absolute;
-        right: 100%;
+        left: 0;
         top: ${labelPos}%;
-        width: 4px;
+        width: 5px;
         height: 1px;
-        background: #333;
+        background: rgba(0,0,0,0.5);
+        transform: translateY(-50%);
       `
-      label.appendChild(tick)
+      gradientBar.appendChild(tick)
     }
     
     gradientContainer.appendChild(gradientBar)

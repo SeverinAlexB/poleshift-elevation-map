@@ -957,6 +957,7 @@ const ElevationLegend = () => {
       label.style.cssText = `
         position: absolute;
         right: 0;
+        left: 0;
         top: ${labelPos}%;
         transform: translateY(-50%);
         background: rgba(255,255,255,0.85);
@@ -964,15 +965,16 @@ const ElevationLegend = () => {
         border-radius: 2px;
         font-size: 9px;
         font-weight: bold;
-        width: ${isHighestLabel ? '50px' : '45px'};
-        text-align: right;
+        width: 45px;
+        margin: 0 auto;
+        text-align: center;
         color: #333;
         box-shadow: 0 0 2px rgba(0,0,0,0.2);
       `
       
       // Format the label text
       if (isHighestLabel) {
-        label.textContent = `${elevation}m+`;
+        label.textContent = `>2200m`;
       } else if (elevation >= 1000) {
         label.textContent = `${elevation}m`;
       } else {
@@ -980,19 +982,6 @@ const ElevationLegend = () => {
       }
       
       gradientBar.appendChild(label)
-      
-      // Add a tick mark
-      const tick = document.createElement('div')
-      tick.style.cssText = `
-        position: absolute;
-        left: 0;
-        top: ${labelPos}%;
-        width: 5px;
-        height: 1px;
-        background: rgba(0,0,0,0.5);
-        transform: translateY(-50%);
-      `
-      gradientBar.appendChild(tick)
     })
     
     gradientContainer.appendChild(gradientBar)

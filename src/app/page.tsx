@@ -8,6 +8,17 @@ export default function Home() {
       </header>
       
       <main className="flex-grow">
+
+        <div>
+          <p>A map focused on analyzing how mega-floods shaped our planet. Pole shifts, Meltwater Pulses, ECDO, and more.</p>
+          <ul>
+            <li>Custom color scale that emphasizes elevation between 0 and 2000m</li>
+            <li>Variable transparency to show sub-surface features</li>
+            <li>Ocean depth visualized</li>
+            <li>Find what was hidden before</li>
+          </ul>
+        </div>
+
         <MapWrapper />
       </main>
       

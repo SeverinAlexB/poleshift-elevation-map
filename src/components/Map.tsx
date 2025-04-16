@@ -830,7 +830,7 @@ const ElevationLegend = () => {
         height: 100%;
         box-sizing: border-box;
       `
-      header.textContent = 'E'
+      header.textContent = 'H'
       header.title = 'Elevation Legend'
       header.addEventListener('click', () => {
         setIsCollapsed(false)

@@ -915,16 +915,16 @@ const ElevationLegend = () => {
     const sortedData = [...colormapData].sort((a, b) => a.elevation - b.elevation)
     const maxElevation = sortedData[sortedData.length - 1].elevation
     
-    // Find cutoff index for elevations above 2200m
-    const cutoffElevation = 2200
+    // Find cutoff index for elevations above 2000m (changed from 2200m)
+    const cutoffElevation = 2000
     const cutoffIndex = sortedData.findIndex(item => item.elevation > cutoffElevation)
     
-    // Create modified data that caps at 2200m for display purposes
+    // Create modified data that caps at 2000m for display purposes
     let displayData = sortedData
     let displayMaxElevation = maxElevation
     
     if (cutoffIndex > 0) {
-      // Keep all data up to cutoff point and add one entry at 2200m with the color at that elevation
+      // Keep all data up to cutoff point and add one entry at 2000m with the color at that elevation
       const cutoffItemIndex = Math.max(0, cutoffIndex - 1)
       const cutoffColor = sortedData[cutoffItemIndex].color
       
@@ -963,7 +963,7 @@ const ElevationLegend = () => {
     `
     
     // Create predefined elevation labels with clean numbers
-    const labelValues = [0, 500, 1000, 1500, 2000, 2200]
+    const labelValues = [0, 500, 1000, 1500, 2000]
     
     // Add labels at clean intervals with adjustments for edge labels
     labelValues.forEach((elevation, index) => {
@@ -973,9 +973,6 @@ const ElevationLegend = () => {
         labelPos = 95; // Position lowest label slightly above the bottom edge
       } else if (index === labelValues.length - 1) {
         labelPos = 5; // Position highest label slightly below the top edge
-      } else if (elevation === 2000) {
-        // Position the 2000m label in the red zone
-        labelPos = 15; // Position 2000m label in the extended red area
       } else {
         // Scale the middle labels to account for the top spacer
         const normalizedPos = (elevation / displayMaxElevation) * (1 - topSpacer);
@@ -983,7 +980,7 @@ const ElevationLegend = () => {
       }
       
       // Special formatting for the highest label if we're using a cutoff
-      const isHighestLabel = elevation === 2200
+      const isHighestLabel = elevation === 2000
       
       const label = document.createElement('div')
       label.style.cssText = `
@@ -1006,7 +1003,7 @@ const ElevationLegend = () => {
       
       // Format the label text
       if (isHighestLabel) {
-        label.textContent = `>2200m`;
+        label.textContent = `>2000m`;
       } else if (elevation >= 1000) {
         label.textContent = `${elevation}m`;
       } else {

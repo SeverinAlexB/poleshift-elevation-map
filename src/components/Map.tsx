@@ -1229,6 +1229,23 @@ export default function Map() {
             bounds={L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180))}
           />
         </LayersControl.Overlay>
+        <LayersControl.Overlay name="ECDO Overlay">
+          <TileLayer
+            attribution='ECDO'
+            url="https://storage.googleapis.com/flood-zyx-tiles/ecdo-overlay/{z}/{x}/{y}.png"
+            maxZoom={4}
+            maxNativeZoom={2}
+            tms={false}
+            opacity={1}
+            zoomOffset={0}
+            noWrap={false}
+            zoomReverse={false}
+            keepBuffer={10}
+            updateWhenIdle={false}
+            updateWhenZooming={true}
+            bounds={L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180))}
+          />
+        </LayersControl.Overlay>
       </LayersControl>
     </MapContainer>
   )

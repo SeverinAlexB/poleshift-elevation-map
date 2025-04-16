@@ -619,24 +619,28 @@ const ElevationLegend = () => {
       const legendContainer = L.DomUtil.create('div', 'elevation-legend')
       legendContainer.style.cssText = `
         position: absolute;
-        top: 60px;
-        right: 60px;
+        top: 190px;
+        right: 10px;
         background: white;
         border-radius: 4px;
         box-shadow: 0 1px 5px rgba(0,0,0,0.4);
         font-family: sans-serif;
         font-size: 12px;
-        z-index: 1001; /* Ensure it's above other controls */
-        max-height: 70vh;
+        z-index: 999; /* Set lower than layers control (1000) */
+        max-height: 60vh;
         overflow-y: auto;
         transition: all 0.3s ease;
         border: 1px solid rgba(0,0,0,0.2);
         display: block; /* Ensure it's visible */
+        width: 120px; /* Narrower width */
       `
       
       // Add the container to the map
       map.getContainer().appendChild(legendContainer)
       legendContainerRef.current = legendContainer
+      
+      // Add a subtle border to make it stand out
+      legendContainer.style.border = '1px solid rgba(0,0,0,0.2)'
       
       // Prevent map interactions on control
       L.DomEvent.disableClickPropagation(legendContainer)
@@ -810,7 +814,7 @@ const ElevationLegend = () => {
       
       const header = document.createElement('div')
       header.style.cssText = `
-        padding: 8px;
+        padding: 6px;
         font-weight: bold;
         cursor: pointer;
         text-align: center;
@@ -818,6 +822,9 @@ const ElevationLegend = () => {
         display: flex;
         align-items: center;
         justify-content: center;
+        border-radius: 4px;
+        color: #333;
+        background-color: #f8f8f8;
       `
       header.textContent = 'E'
       header.title = 'Elevation Legend'
@@ -830,7 +837,7 @@ const ElevationLegend = () => {
     }
     
     // Expanded view
-    legendContainer.style.width = '150px'
+    legendContainer.style.width = '120px'
     legendContainer.style.height = 'auto'
     
     // Create header
@@ -839,14 +846,17 @@ const ElevationLegend = () => {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 8px 12px;
+      padding: 5px 8px;
       font-weight: bold;
       background: #f8f8f8;
       border-bottom: 1px solid #eee;
+      font-size: 11px;
+      color: #333;
     `
     
     const title = document.createElement('div')
     title.textContent = 'Elevation (m)'
+    title.style.color = '#333';
     
     const closeButton = document.createElement('button')
     closeButton.style.cssText = `
@@ -854,12 +864,12 @@ const ElevationLegend = () => {
       border: none;
       cursor: pointer;
       padding: 0;
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 16px;
+      font-size: 14px;
       color: #666;
     `
     closeButton.innerHTML = '−'
@@ -879,7 +889,8 @@ const ElevationLegend = () => {
     gradientContainer.style.cssText = `
       display: flex;
       flex-direction: column;
-      padding: 8px;
+      padding: 6px;
+      color: #333;
     `
     
     // Generate gradient stops
@@ -891,14 +902,16 @@ const ElevationLegend = () => {
     const gradientBar = document.createElement('div')
     gradientBar.style.cssText = `
       width: 100%;
-      height: 200px;
+      height: 150px;
       background: linear-gradient(to top, ${gradientStops});
       margin-bottom: 8px;
       position: relative;
+      border-radius: 2px;
+      box-shadow: inset 0 0 3px rgba(0,0,0,0.1);
     `
     
     // Add labels at regular intervals
-    const numLabels = Math.min(8, colormapData.length)
+    const numLabels = Math.min(5, colormapData.length)
     const labelStep = Math.floor(colormapData.length / numLabels)
     
     for (let i = 0; i < colormapData.length; i += labelStep) {
@@ -914,13 +927,25 @@ const ElevationLegend = () => {
         right: 0;
         top: ${labelPos}%;
         transform: translateY(-50%);
-        background: rgba(255,255,255,0.7);
+        background: rgba(255,255,255,0.85);
         padding: 2px 4px;
         border-radius: 2px;
-        font-size: 10px;
+        font-size: 9px;
         font-weight: bold;
+        width: 45px;
+        text-align: right;
+        color: #333;
+        box-shadow: 0 0 2px rgba(0,0,0,0.2);
       `
-      label.textContent = item.elevation.toLocaleString()
+      // Format large numbers with k suffix for thousands
+      let displayValue = item.elevation;
+      if (displayValue >= 1000) {
+        displayValue = Math.round(displayValue / 100) / 10;
+        label.textContent = `${displayValue}k`;
+      } else {
+        label.textContent = displayValue.toLocaleString();
+      }
+      
       gradientBar.appendChild(label)
       
       // Add a tick mark
@@ -931,7 +956,7 @@ const ElevationLegend = () => {
         top: ${labelPos}%;
         width: 4px;
         height: 1px;
-        background: #000;
+        background: #333;
       `
       label.appendChild(tick)
     }

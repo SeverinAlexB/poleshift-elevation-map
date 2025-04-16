@@ -83,6 +83,10 @@ const GlobalMapCSS = () => {
       .leaflet-bar a {
         cursor: pointer !important;
       }
+      
+      .grayscale-tiles {
+        filter: grayscale(100%) !important;
+      }
     `
     document.head.appendChild(style)
     
@@ -441,7 +445,7 @@ const ElevationControl = ({ elevation, setElevation }: ElevationControlProps) =>
 // Transparency Control component
 const TransparencyControl = () => {
   const map = useMap()
-  const [opacity, setOpacity] = useState(0.5)
+  const [opacity, setOpacity] = useState(0.4)
   
   useEffect(() => {
     // Only run on client-side
@@ -633,6 +637,16 @@ export default function Map() {
             url="https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
             subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
             maxZoom={20}
+          />
+        </LayersControl.BaseLayer>
+        
+        <LayersControl.BaseLayer name="Satellite (Grayscale)">
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
+            subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
+            maxZoom={20}
+            className="grayscale-tiles"
           />
         </LayersControl.BaseLayer>
 

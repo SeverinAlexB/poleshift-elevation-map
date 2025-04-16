@@ -935,17 +935,27 @@ const ElevationLegend = () => {
       displayMaxElevation = cutoffElevation
     }
     
-    // Generate gradient stops from the display data
-    const gradientStops = displayData.map(item => 
-      `${item.color} ${(item.elevation / displayMaxElevation) * 100}%`
-    ).join(', ')
+    // Calculate virtual positions for the 2000m and 2200m points to ensure enough color space
+    // This ensures the highest color (red) extends further down to cover both top labels
+    const topSpacer = 0.1; // Add 10% extra space at the top for the highest color
+    const displayDataWithSpacers = [...displayData];
+    
+    // Generate gradient stops with extension at edges and more space for top color
+    const extendedGradientStops = [
+      `${displayData[0].color} 0%`, // Bottom color at 0%
+      ...displayData.slice(0, -1).map(item => // All but the highest color point
+        `${item.color} ${(item.elevation / displayMaxElevation) * (1 - topSpacer) * 100}%`
+      ),
+      `${displayData[displayData.length - 1].color} ${(1 - topSpacer) * 100}%`, // Highest color starts lower
+      `${displayData[displayData.length - 1].color} 100%` // Highest color extends to the top
+    ].join(', ')
     
     // Create gradient bar
     const gradientBar = document.createElement('div')
     gradientBar.style.cssText = `
       width: 100%;
       height: 150px;
-      background: linear-gradient(to top, ${gradientStops});
+      background: linear-gradient(to top, ${extendedGradientStops});
       margin-bottom: 8px;
       position: relative;
       border-radius: 2px;
@@ -955,14 +965,22 @@ const ElevationLegend = () => {
     // Create predefined elevation labels with clean numbers
     const labelValues = [0, 500, 1000, 1500, 2000, 2200]
     
-    // Add labels at clean intervals
-    labelValues.forEach(elevation => {
-      // Calculate position based on the elevation
-      const percentage = (elevation / displayMaxElevation) * 100
-      const labelPos = 100 - percentage
-      
-      // Skip if outside the visible range
-      if (labelPos < 0 || labelPos > 100) return
+    // Add labels at clean intervals with adjustments for edge labels
+    labelValues.forEach((elevation, index) => {
+      // Calculate position based on the elevation with slight inset for edge labels
+      let labelPos;
+      if (index === 0) {
+        labelPos = 95; // Position lowest label slightly above the bottom edge
+      } else if (index === labelValues.length - 1) {
+        labelPos = 5; // Position highest label slightly below the top edge
+      } else if (elevation === 2000) {
+        // Position the 2000m label in the red zone
+        labelPos = 15; // Position 2000m label in the extended red area
+      } else {
+        // Scale the middle labels to account for the top spacer
+        const normalizedPos = (elevation / displayMaxElevation) * (1 - topSpacer);
+        labelPos = 100 - (normalizedPos * 100);
+      }
       
       // Special formatting for the highest label if we're using a cutoff
       const isHighestLabel = elevation === 2200

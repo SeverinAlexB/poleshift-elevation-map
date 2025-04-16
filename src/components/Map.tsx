@@ -901,8 +901,29 @@ const ElevationLegend = () => {
     const sortedData = [...colormapData].sort((a, b) => a.elevation - b.elevation)
     const maxElevation = sortedData[sortedData.length - 1].elevation
     
-    const gradientStops = sortedData.map(item => 
-      `${item.color} ${(item.elevation / maxElevation) * 100}%`
+    // Find cutoff index for elevations above 2200m
+    const cutoffElevation = 2200
+    const cutoffIndex = sortedData.findIndex(item => item.elevation > cutoffElevation)
+    
+    // Create modified data that caps at 2200m for display purposes
+    let displayData = sortedData
+    let displayMaxElevation = maxElevation
+    
+    if (cutoffIndex > 0) {
+      // Keep all data up to cutoff point and add one entry at 2200m with the color at that elevation
+      const cutoffItemIndex = Math.max(0, cutoffIndex - 1)
+      const cutoffColor = sortedData[cutoffItemIndex].color
+      
+      displayData = [
+        ...sortedData.filter(item => item.elevation <= cutoffElevation),
+        { elevation: cutoffElevation, color: cutoffColor }
+      ]
+      displayMaxElevation = cutoffElevation
+    }
+    
+    // Generate gradient stops from the display data
+    const gradientStops = displayData.map(item => 
+      `${item.color} ${(item.elevation / displayMaxElevation) * 100}%`
     ).join(', ')
     
     // Create gradient bar
@@ -917,16 +938,20 @@ const ElevationLegend = () => {
       box-shadow: inset 0 0 3px rgba(0,0,0,0.1);
     `
     
-    // Add labels at regular intervals - ensure we include lowest, highest, and some intermediate values
-    // Create evenly spaced labels for better readability
-    const numLabels = Math.min(6, sortedData.length)
-    const step = (sortedData.length - 1) / (numLabels - 1)
+    // Create predefined elevation labels with clean numbers
+    const labelValues = [0, 500, 1000, 1500, 2000, 2200]
     
-    for (let i = 0; i < numLabels; i++) {
-      const dataIndex = Math.min(Math.round(i * step), sortedData.length - 1)
-      const item = sortedData[dataIndex]
-      const percentage = (item.elevation / maxElevation) * 100
+    // Add labels at clean intervals
+    labelValues.forEach(elevation => {
+      // Calculate position based on the elevation
+      const percentage = (elevation / displayMaxElevation) * 100
       const labelPos = 100 - percentage
+      
+      // Skip if outside the visible range
+      if (labelPos < 0 || labelPos > 100) return
+      
+      // Special formatting for the highest label if we're using a cutoff
+      const isHighestLabel = elevation === 2200
       
       const label = document.createElement('div')
       label.style.cssText = `
@@ -939,18 +964,19 @@ const ElevationLegend = () => {
         border-radius: 2px;
         font-size: 9px;
         font-weight: bold;
-        width: 45px;
+        width: ${isHighestLabel ? '50px' : '45px'};
         text-align: right;
         color: #333;
         box-shadow: 0 0 2px rgba(0,0,0,0.2);
       `
-      // Format large numbers with k suffix for thousands
-      let displayValue = item.elevation;
-      if (displayValue >= 1000) {
-        displayValue = Math.round(displayValue / 100) / 10;
-        label.textContent = `${displayValue}k`;
+      
+      // Format the label text
+      if (isHighestLabel) {
+        label.textContent = `${elevation}m+`;
+      } else if (elevation >= 1000) {
+        label.textContent = `${elevation}m`;
       } else {
-        label.textContent = displayValue.toLocaleString();
+        label.textContent = `${elevation}m`;
       }
       
       gradientBar.appendChild(label)
@@ -967,7 +993,7 @@ const ElevationLegend = () => {
         transform: translateY(-50%);
       `
       gradientBar.appendChild(tick)
-    }
+    })
     
     gradientContainer.appendChild(gradientBar)
     legendContainer.appendChild(gradientContainer)

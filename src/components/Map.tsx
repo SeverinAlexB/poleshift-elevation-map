@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { MapContainer, TileLayer, useMap, ZoomControl, LayersControl } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
@@ -602,6 +602,347 @@ const TransparencyControl = () => {
   return null
 }
 
+// Elevation Legend component
+const ElevationLegend = () => {
+  const map = useMap()
+  const [colormapData, setColormapData] = useState<Array<{elevation: number, color: string}>>([])
+  const [isVisible, setIsVisible] = useState(true)
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const legendContainerRef = useRef<HTMLDivElement | null>(null)
+  const hasInitializedRef = useRef(false)
+  
+  // First effect to create the legend container
+  useEffect(() => {
+    // Only run on client-side
+    if (typeof window !== 'undefined') {
+      // Create control container
+      const legendContainer = L.DomUtil.create('div', 'elevation-legend')
+      legendContainer.style.cssText = `
+        position: absolute;
+        top: 60px;
+        right: 60px;
+        background: white;
+        border-radius: 4px;
+        box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+        font-family: sans-serif;
+        font-size: 12px;
+        z-index: 1001; /* Ensure it's above other controls */
+        max-height: 70vh;
+        overflow-y: auto;
+        transition: all 0.3s ease;
+        border: 1px solid rgba(0,0,0,0.2);
+        display: block; /* Ensure it's visible */
+      `
+      
+      // Add the container to the map
+      map.getContainer().appendChild(legendContainer)
+      legendContainerRef.current = legendContainer
+      
+      // Prevent map interactions on control
+      L.DomEvent.disableClickPropagation(legendContainer)
+      L.DomEvent.disableScrollPropagation(legendContainer)
+      
+      // Initial visibility check after a delay to ensure layers are loaded
+      setTimeout(() => {
+        checkOverlayStatus()
+      }, 500)
+      
+      // Clean up on unmount
+      return () => {
+        if (legendContainer.parentNode) {
+          legendContainer.parentNode.removeChild(legendContainer)
+        }
+      }
+    }
+  }, [map])
+
+  // Check if the elevation overlay is visible and update legend visibility
+  const checkOverlayStatus = () => {
+    if (!legendContainerRef.current || !map) return
+    
+    let hasElevationOverlay = false
+    map.eachLayer((layer: any) => {
+      if (layer._url && layer._url.includes('elevation-map')) {
+        hasElevationOverlay = true
+      }
+    })
+    
+    // Always set to true initially, since the overlay is checked by default in the LayersControl
+    const shouldBeVisible = hasElevationOverlay || !hasInitializedRef.current
+    setIsVisible(shouldBeVisible)
+    
+    if (legendContainerRef.current) {
+      legendContainerRef.current.style.display = shouldBeVisible ? 'block' : 'none'
+    }
+  }
+  
+  // Listen for overlay add/remove events
+  useEffect(() => {
+    if (!map) return
+    
+    // Attach event listeners for overlay changes
+    map.on('overlayadd', (e: any) => {
+      if (e.name === 'Elevation Overlay') {
+        setIsVisible(true)
+        if (legendContainerRef.current) {
+          legendContainerRef.current.style.display = 'block'
+        }
+      }
+    })
+    
+    map.on('overlayremove', (e: any) => {
+      if (e.name === 'Elevation Overlay') {
+        setIsVisible(false)
+        if (legendContainerRef.current) {
+          legendContainerRef.current.style.display = 'none'
+        }
+      }
+    })
+    
+    return () => {
+      map.off('overlayadd')
+      map.off('overlayremove')
+    }
+  }, [map])
+  
+  // Second effect to fetch and update colormap data
+  useEffect(() => {
+    // Fetch and parse colormap data
+    const fetchColormap = async () => {
+      try {
+        const response = await fetch('/elevation-colormap.txt')
+        const text = await response.text()
+        
+        // Parse the colormap data
+        const lines = text.split('\n')
+        const parsedData: Array<{elevation: number, color: string}> = []
+        
+        for (const line of lines) {
+          // Skip comments and empty lines
+          if (line.startsWith('#') || line.startsWith('INTERPOLATION') || !line.trim()) continue
+          
+          // Parse each line - format is value,r,g,b,alpha,label
+          const parts = line.split(',')
+          if (parts.length >= 5) {
+            const elevation = parseFloat(parts[0])
+            const r = parseInt(parts[1])
+            const g = parseInt(parts[2])
+            const b = parseInt(parts[3])
+            
+            if (!isNaN(elevation) && !isNaN(r) && !isNaN(g) && !isNaN(b)) {
+              parsedData.push({
+                elevation,
+                color: `rgb(${r}, ${g}, ${b})`
+              })
+            }
+          }
+        }
+        
+        // Filter to reduce the number of entries for display
+        if (parsedData.length > 20) {
+          const step = Math.floor(parsedData.length / 20)
+          const filteredData = []
+          
+          for (let i = 0; i < parsedData.length; i += step) {
+            filteredData.push(parsedData[i])
+          }
+          
+          // Ensure we include the last entry (highest elevation)
+          if (filteredData[filteredData.length - 1] !== parsedData[parsedData.length - 1]) {
+            filteredData.push(parsedData[parsedData.length - 1])
+          }
+          
+          setColormapData(filteredData)
+        } else {
+          setColormapData(parsedData)
+        }
+        
+        // Force an update immediately after data is available
+        setTimeout(() => {
+          updateLegend()
+          hasInitializedRef.current = true
+        }, 50)
+      } catch (error) {
+        console.error('Error loading elevation colormap:', error)
+      }
+    }
+    
+    // Call fetchColormap only once
+    fetchColormap()
+  }, [])
+  
+  // Third effect to update the legend when necessary
+  useEffect(() => {
+    if (!legendContainerRef.current || colormapData.length === 0) return
+    
+    // Set up interval to ensure legend is visible after initial render
+    const checkInitialization = setInterval(() => {
+      if (colormapData.length > 0) {
+        updateLegend()
+        checkOverlayStatus()
+        if (!hasInitializedRef.current) {
+          hasInitializedRef.current = true
+        }
+        clearInterval(checkInitialization)
+      }
+    }, 200)
+    
+    // Update again when the state changes
+    updateLegend()
+    
+    return () => {
+      clearInterval(checkInitialization)
+    }
+  }, [colormapData, isVisible, isCollapsed])
+  
+  // Function to update the legend display
+  const updateLegend = () => {
+    const legendContainer = legendContainerRef.current
+    if (!legendContainer || colormapData.length === 0) return
+    
+    // Clear existing content
+    legendContainer.innerHTML = ''
+    
+    if (isCollapsed) {
+      // Just show header when collapsed
+      legendContainer.style.width = '32px'
+      legendContainer.style.height = '32px'
+      
+      const header = document.createElement('div')
+      header.style.cssText = `
+        padding: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        text-align: center;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      `
+      header.textContent = 'E'
+      header.title = 'Elevation Legend'
+      header.addEventListener('click', () => {
+        setIsCollapsed(false)
+      })
+      
+      legendContainer.appendChild(header)
+      return
+    }
+    
+    // Expanded view
+    legendContainer.style.width = '150px'
+    legendContainer.style.height = 'auto'
+    
+    // Create header
+    const header = document.createElement('div')
+    header.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      font-weight: bold;
+      background: #f8f8f8;
+      border-bottom: 1px solid #eee;
+    `
+    
+    const title = document.createElement('div')
+    title.textContent = 'Elevation (m)'
+    
+    const closeButton = document.createElement('button')
+    closeButton.style.cssText = `
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: #666;
+    `
+    closeButton.innerHTML = '−'
+    closeButton.title = 'Collapse legend'
+    closeButton.addEventListener('click', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsCollapsed(true)
+    })
+    
+    header.appendChild(title)
+    header.appendChild(closeButton)
+    legendContainer.appendChild(header)
+    
+    // Create gradient display
+    const gradientContainer = document.createElement('div')
+    gradientContainer.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      padding: 8px;
+    `
+    
+    // Generate gradient stops
+    const gradientStops = colormapData.map(item => 
+      `${item.color} ${(item.elevation / colormapData[colormapData.length - 1].elevation) * 100}%`
+    ).join(', ')
+    
+    // Create gradient bar
+    const gradientBar = document.createElement('div')
+    gradientBar.style.cssText = `
+      width: 100%;
+      height: 200px;
+      background: linear-gradient(to top, ${gradientStops});
+      margin-bottom: 8px;
+      position: relative;
+    `
+    
+    // Add labels at regular intervals
+    const numLabels = Math.min(8, colormapData.length)
+    const labelStep = Math.floor(colormapData.length / numLabels)
+    
+    for (let i = 0; i < colormapData.length; i += labelStep) {
+      if (i >= colormapData.length) continue
+      
+      const item = colormapData[i]
+      const percentage = (item.elevation / colormapData[colormapData.length - 1].elevation) * 100
+      const labelPos = 100 - percentage
+      
+      const label = document.createElement('div')
+      label.style.cssText = `
+        position: absolute;
+        right: 0;
+        top: ${labelPos}%;
+        transform: translateY(-50%);
+        background: rgba(255,255,255,0.7);
+        padding: 2px 4px;
+        border-radius: 2px;
+        font-size: 10px;
+        font-weight: bold;
+      `
+      label.textContent = item.elevation.toLocaleString()
+      gradientBar.appendChild(label)
+      
+      // Add a tick mark
+      const tick = document.createElement('div')
+      tick.style.cssText = `
+        position: absolute;
+        right: 100%;
+        top: ${labelPos}%;
+        width: 4px;
+        height: 1px;
+        background: #000;
+      `
+      label.appendChild(tick)
+    }
+    
+    gradientContainer.appendChild(gradientBar)
+    legendContainer.appendChild(gradientContainer)
+  }
+  
+  return null
+}
+
 export default function Map() {
   const [isMounted, setIsMounted] = useState(false)
   const [elevation, setElevation] = useState<number | null>(null)
@@ -630,6 +971,7 @@ export default function Map() {
       <DirectMapStyling />
       <ElevationControl elevation={elevation} setElevation={setElevation} />
       <TransparencyControl />
+      <ElevationLegend />
       <LayersControl position="topright">
         <LayersControl.BaseLayer checked name="Satellite">
           <TileLayer

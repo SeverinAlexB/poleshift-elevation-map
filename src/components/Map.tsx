@@ -811,6 +811,7 @@ const ElevationLegend = () => {
       // Just show header when collapsed
       legendContainer.style.width = '32px'
       legendContainer.style.height = '32px'
+      legendContainer.style.overflow = 'hidden'
       
       const header = document.createElement('div')
       header.style.cssText = `
@@ -825,6 +826,9 @@ const ElevationLegend = () => {
         border-radius: 4px;
         color: #333;
         background-color: #f8f8f8;
+        width: 100%;
+        height: 100%;
+        box-sizing: border-box;
       `
       header.textContent = 'E'
       header.title = 'Elevation Legend'

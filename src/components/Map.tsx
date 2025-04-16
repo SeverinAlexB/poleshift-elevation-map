@@ -438,6 +438,152 @@ const ElevationControl = ({ elevation, setElevation }: ElevationControlProps) =>
   return null
 }
 
+// Transparency Control component
+const TransparencyControl = () => {
+  const map = useMap()
+  const [opacity, setOpacity] = useState(0.5)
+  
+  useEffect(() => {
+    // Only run on client-side
+    if (typeof window !== 'undefined') {
+      // Create control container
+      const controlContainer = L.DomUtil.create('div', 'transparency-control')
+      controlContainer.style.cssText = `
+        background: white;
+        padding: 8px 12px;
+        border-radius: 4px;
+        box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+        font-family: sans-serif;
+        font-size: 12px;
+        font-weight: 500;
+        width: 200px;
+      `
+      
+      // Create label
+      const label = document.createElement('label')
+      label.style.cssText = `
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      `
+      label.textContent = 'Elevation Transparency'
+      
+      // Create slider control
+      const slider = document.createElement('input')
+      slider.type = 'range'
+      slider.min = '0'
+      slider.max = '1'
+      slider.step = '0.05'
+      slider.value = opacity.toString()
+      slider.style.cssText = `
+        width: 100%;
+        margin: 0;
+      `
+      
+      // Value display
+      const valueDisplay = document.createElement('div')
+      valueDisplay.style.cssText = `
+        font-size: 11px;
+        text-align: center;
+        margin-top: 2px;
+      `
+      valueDisplay.textContent = `${Math.round(opacity * 100)}%`
+      
+      // Add elements to container
+      controlContainer.appendChild(label)
+      controlContainer.appendChild(slider)
+      controlContainer.appendChild(valueDisplay)
+      
+      // Create custom control
+      const TransparencySliderControl = L.Control.extend({
+        options: {
+          position: 'bottomleft'
+        },
+        
+        onAdd: function() {
+          return controlContainer
+        }
+      })
+      
+      // Add control to map
+      const transparencyControl = new TransparencySliderControl()
+      transparencyControl.addTo(map)
+      
+      // Handle slider changes
+      const handleSliderChange = (e: Event) => {
+        // Prevent map interactions while adjusting slider
+        L.DomEvent.stopPropagation(e)
+        
+        const target = e.target as HTMLInputElement
+        const newOpacity = parseFloat(target.value)
+        setOpacity(newOpacity)
+        
+        // Update displayed value
+        valueDisplay.textContent = `${Math.round(newOpacity * 100)}%`
+        
+        // Find and update all elevation overlay layers
+        map.eachLayer((layer: any) => {
+          if (layer._url && layer._url.includes('elevation-map')) {
+            layer.setOpacity(newOpacity)
+          }
+        })
+      }
+      
+      // Prevent map interactions on control
+      L.DomEvent.disableClickPropagation(controlContainer)
+      L.DomEvent.disableScrollPropagation(controlContainer)
+      
+      // Add event listener
+      slider.addEventListener('input', handleSliderChange)
+      
+      // Fix dragging issues by preventing default behavior and stopping propagation
+      slider.addEventListener('mousedown', (e) => {
+        e.stopPropagation()
+        
+        // Add temporary event listeners on the document
+        const handleMouseMove = (e: MouseEvent) => {
+          e.stopPropagation()
+          e.preventDefault()
+        }
+        
+        const handleMouseUp = () => {
+          document.removeEventListener('mousemove', handleMouseMove)
+          document.removeEventListener('mouseup', handleMouseUp)
+        }
+        
+        document.addEventListener('mousemove', handleMouseMove)
+        document.addEventListener('mouseup', handleMouseUp)
+      })
+      
+      // Improve interaction behavior
+      slider.addEventListener('touchstart', (e) => {
+        e.stopPropagation()
+      })
+      
+      slider.addEventListener('touchmove', (e) => {
+        e.stopPropagation()
+      })
+      
+      // Add visual feedback on hover
+      slider.addEventListener('mouseover', () => {
+        slider.style.cursor = 'pointer'
+      })
+      
+      // Clean up on unmount
+      return () => {
+        slider.removeEventListener('input', handleSliderChange)
+        slider.removeEventListener('mousedown', () => {})
+        slider.removeEventListener('touchstart', () => {})
+        slider.removeEventListener('touchmove', () => {})
+        slider.removeEventListener('mouseover', () => {})
+        map.removeControl(transparencyControl)
+      }
+    }
+  }, [map, opacity])
+  
+  return null
+}
+
 export default function Map() {
   const [isMounted, setIsMounted] = useState(false)
   const [elevation, setElevation] = useState<number | null>(null)
@@ -465,6 +611,7 @@ export default function Map() {
       <GlobalMapCSS />
       <DirectMapStyling />
       <ElevationControl elevation={elevation} setElevation={setElevation} />
+      <TransparencyControl />
       <LayersControl position="topright">
         <LayersControl.BaseLayer checked name="Satellite">
           <TileLayer
@@ -474,14 +621,23 @@ export default function Map() {
             maxZoom={20}
           />
         </LayersControl.BaseLayer>
-        <LayersControl.BaseLayer name="Elevation Map">
+        <LayersControl.BaseLayer name="Elevation">
           <TileLayer
-            attribution='Elevation Map'
+            attribution='Elevation'
             url="https://storage.googleapis.com/flood-zyx-tiles/elevation-map/{z}/{x}/{y}.png"
             maxZoom={10}
             tms={false}
           />
         </LayersControl.BaseLayer>
+        <LayersControl.Overlay checked name="Elevation Overlay (50% transparency)">
+          <TileLayer
+            attribution='Elevation'
+            url="https://storage.googleapis.com/flood-zyx-tiles/elevation-map/{z}/{x}/{y}.png"
+            maxZoom={10}
+            tms={false}
+            opacity={0.5}
+          />
+        </LayersControl.Overlay>
         <LayersControl.BaseLayer name="OpenTopoMap">
           <TileLayer
             attribution='&copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'

@@ -654,9 +654,17 @@ export default function Map() {
           <TileLayer
             attribution='Elevation'
             url="https://storage.googleapis.com/flood-zyx-tiles/elevation-map/{z}/{x}/{y}.png"
-            maxZoom={10}
+            maxZoom={19}
+            maxNativeZoom={10}
             tms={false}
             opacity={0.5}
+            zoomOffset={0}
+            noWrap={false}
+            zoomReverse={false}
+            keepBuffer={10}
+            updateWhenIdle={false}
+            updateWhenZooming={true}
+            bounds={L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180))}
           />
         </LayersControl.Overlay>
       </LayersControl>

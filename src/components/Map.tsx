@@ -456,17 +456,39 @@ const TransparencyControl = () => {
         font-family: sans-serif;
         font-size: 12px;
         font-weight: 500;
-        width: 200px;
+        width: 240px;
+        border: 1px solid rgba(0,0,0,0.2);
+      `
+      
+      // Create label container to hold both label and value display
+      const labelContainer = document.createElement('div')
+      labelContainer.style.cssText = `
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 5px;
       `
       
       // Create label
       const label = document.createElement('label')
       label.style.cssText = `
-        display: block;
-        margin-bottom: 5px;
         font-weight: bold;
+        color: #333;
+        font-size: 13px;
+        text-shadow: 0px 0px 1px rgba(255,255,255,0.7);
       `
       label.textContent = 'Elevation Transparency'
+      
+      // Value display
+      const valueDisplay = document.createElement('div')
+      valueDisplay.style.cssText = `
+        font-size: 13px;
+        color: #333;
+        font-weight: bold;
+        text-shadow: 0px 0px 1px rgba(255,255,255,0.7);
+        margin-left: 5px;
+      `
+      valueDisplay.textContent = `${Math.round(opacity * 100)}%`
       
       // Create slider control
       const slider = document.createElement('input')
@@ -480,19 +502,11 @@ const TransparencyControl = () => {
         margin: 0;
       `
       
-      // Value display
-      const valueDisplay = document.createElement('div')
-      valueDisplay.style.cssText = `
-        font-size: 11px;
-        text-align: center;
-        margin-top: 2px;
-      `
-      valueDisplay.textContent = `${Math.round(opacity * 100)}%`
-      
       // Add elements to container
-      controlContainer.appendChild(label)
+      labelContainer.appendChild(label)
+      labelContainer.appendChild(valueDisplay)
+      controlContainer.appendChild(labelContainer)
       controlContainer.appendChild(slider)
-      controlContainer.appendChild(valueDisplay)
       
       // Create custom control
       const TransparencySliderControl = L.Control.extend({
@@ -629,15 +643,7 @@ export default function Map() {
             tms={false}
           />
         </LayersControl.BaseLayer>
-        <LayersControl.Overlay checked name="Elevation Overlay (50% transparency)">
-          <TileLayer
-            attribution='Elevation'
-            url="https://storage.googleapis.com/flood-zyx-tiles/elevation-map/{z}/{x}/{y}.png"
-            maxZoom={10}
-            tms={false}
-            opacity={0.5}
-          />
-        </LayersControl.Overlay>
+
         <LayersControl.BaseLayer name="OpenTopoMap">
           <TileLayer
             attribution='&copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
@@ -652,6 +658,15 @@ export default function Map() {
             maxZoom={19}
           />
         </LayersControl.BaseLayer>
+        <LayersControl.Overlay checked name="Elevation Overlay">
+          <TileLayer
+            attribution='Elevation'
+            url="https://storage.googleapis.com/flood-zyx-tiles/elevation-map/{z}/{x}/{y}.png"
+            maxZoom={10}
+            tms={false}
+            opacity={0.5}
+          />
+        </LayersControl.Overlay>
       </LayersControl>
     </MapContainer>
   )

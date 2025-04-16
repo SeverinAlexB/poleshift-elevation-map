@@ -474,6 +474,14 @@ export default function Map() {
             maxZoom={20}
           />
         </LayersControl.BaseLayer>
+        <LayersControl.BaseLayer name="Elevation Map">
+          <TileLayer
+            attribution='Elevation Map'
+            url="https://storage.googleapis.com/flood-zyx-tiles/elevation-map/{z}/{x}/{y}.png"
+            maxZoom={10}
+            tms={false}
+          />
+        </LayersControl.BaseLayer>
         <LayersControl.BaseLayer name="OpenTopoMap">
           <TileLayer
             attribution='&copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
